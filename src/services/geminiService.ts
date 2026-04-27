@@ -209,3 +209,53 @@ export const translateWord = async (word: string) => {
 
   return response.text.trim();
 };
+
+export const generateSuggestedContent = async (userPrompt: string) => {
+  const prompt = `Act as an expert German teacher. Based on this request: "${userPrompt}", generate a list of German vocabulary and relevant grammar points for a student.
+  The vocabulary should be a list of essential words related to the topic.
+  The grammar points should explain rules or patterns related to the topic with examples.
+  
+  Format the output as JSON.`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          vocabulary: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                german: { type: Type.STRING },
+                vietnamese: { type: Type.STRING }
+              },
+              required: ["german", "vietnamese"]
+            }
+          },
+          grammar: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                explanation: { type: Type.STRING },
+                examples: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
+              },
+              required: ["title", "explanation", "examples"]
+            }
+          }
+        },
+        required: ["vocabulary", "grammar"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text);
+};

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { LessonContent, Vocabulary, GrammarPoint } from '../types';
-import { Plus, Trash2, BookOpen, Edit, X, ClipboardList, Check } from 'lucide-react';
+import { Plus, Trash2, BookOpen, Edit, X, ClipboardList, Check, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { generateSuggestedContent } from '../services/geminiService';
 
 interface ContentManagerProps {
   lessons: LessonContent[];
@@ -24,6 +25,39 @@ export const ContentManager: React.FC<ContentManagerProps> = ({ lessons, onSave,
   
   const [bulkInputType, setBulkInputType] = useState<'vocabulary' | 'grammar' | null>(null);
   const [bulkText, setBulkText] = useState('');
+
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleAIGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    try {
+      const suggestion = await generateSuggestedContent(aiPrompt);
+      setNewLesson(prev => ({
+        ...prev,
+        vocabulary: [
+          ...(prev.vocabulary || []), 
+          ...suggestion.vocabulary.map((v: any) => ({ 
+            ...v, 
+            id: Math.random().toString(36).substr(2, 9) 
+          }))
+        ],
+        grammar: [
+          ...(prev.grammar || []), 
+          ...suggestion.grammar.map((g: any) => ({ 
+            ...g, 
+            id: Math.random().toString(36).substr(2, 9) 
+          }))
+        ]
+      }));
+      setAiPrompt('');
+    } catch (error) {
+      console.error("AI Generation failed", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleBulkImport = () => {
     if (!bulkInputType || !bulkText.trim()) return;
@@ -241,6 +275,33 @@ export const ContentManager: React.FC<ContentManagerProps> = ({ lessons, onSave,
                   value={newLesson.title}
                   onChange={e => setNewLesson({ ...newLesson, title: e.target.value })}
                 />
+              </div>
+
+              {/* AI Generation Section */}
+              <div className="bg-primary-light/20 p-4 rounded-xl border border-primary/10 space-y-3">
+                <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                  <Sparkles size={14} />
+                  <span>Trợ lý AI - Tạo nội dung nhanh</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="VD: Từ vựng về gia đình, hay các số từ 1 đến 100..."
+                    className="flex-1 bg-white rounded-lg px-3 py-2.5 text-sm border border-primary/20 focus:border-primary focus:outline-none"
+                    value={aiPrompt}
+                    onChange={e => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAIGenerate()}
+                  />
+                  <button 
+                    onClick={handleAIGenerate}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  >
+                    {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                    Tạo ngay
+                  </button>
+                </div>
+                <p className="text-[10px] text-text-light italic">AI sẽ tự động tìm từ vựng và giải thích ngữ pháp dựa trên yêu cầu của bạn.</p>
               </div>
 
               {/* Vocab Section */}
