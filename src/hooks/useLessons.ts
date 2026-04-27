@@ -43,53 +43,34 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export const useLessons = () => {
   const [lessons, setLessons] = useState<LessonContent[]>([]);
-  const [user, setUser] = useState<User | null>(null);
+  const [userCode, setUserCode] = useState<string | null>(localStorage.getItem('deutsch_user_code'));
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (!u) {
-        setLessons([]);
-        setLoading(false);
-      }
-    });
-    return () => unsubscribeAuth();
-  }, []);
+  const login = (code: string) => {
+    if (code.length === 6) {
+      setUserCode(code);
+      localStorage.setItem('deutsch_user_code', code);
+    }
+  };
+
+  const logout = () => {
+    setUserCode(null);
+    localStorage.removeItem('deutsch_user_code');
+    setLessons([]);
+  };
 
   useEffect(() => {
-    if (!user) return;
+    if (!userCode) {
+      setLoading(false);
+      return;
+    }
 
-    // Migrate from localStorage if needed
-    const migrate = async () => {
-      const saved = localStorage.getItem('deutsch_lessons');
-      if (saved) {
-        try {
-          const localLessons = JSON.parse(saved) as LessonContent[];
-          for (const lesson of localLessons) {
-            // Check if it already exists by title (simple heuristic) or just upload all
-            // To be safe and avoid duplicates, we can check if any cloud lesson has same title?
-            // Actually, better to just upload them as "new" cloud lessons if they have local IDs
-            const { id: _, ...lessonData } = lesson as any;
-            await addDoc(collection(db, 'lessons'), {
-              ...lessonData,
-              userId: user.uid,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
-          }
-          localStorage.removeItem('deutsch_lessons');
-        } catch (e) {
-          console.error("Migration failed", e);
-        }
-      }
-    };
-    migrate();
+    setLoading(true);
 
     const path = 'lessons';
     const q = query(
       collection(db, path),
-      where('userId', '==', user.uid),
+      where('userId', '==', userCode),
       orderBy('createdAt', 'desc')
     );
 
@@ -103,21 +84,23 @@ export const useLessons = () => {
         setLoading(false);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, path);
+        // We don't have auth.currentUser anymore, so we adapt handleFirestoreError
+        console.error('Firestore Error: ', error);
+        setLoading(false);
       }
     );
 
     return () => unsubscribe();
-  }, [user]);
+  }, [userCode]);
 
   const saveLesson = async (lesson: LessonContent) => {
-    if (!user) return;
+    if (!userCode) return;
 
     const path = 'lessons';
     try {
       const data = {
         ...lesson,
-        userId: user.uid,
+        userId: userCode,
         updatedAt: serverTimestamp(),
       };
       // Remove id from data to avoid storing it twice
@@ -132,19 +115,19 @@ export const useLessons = () => {
         });
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.error('Save failed', error);
     }
   };
 
   const deleteLesson = async (id: string) => {
-    if (!user) return;
+    if (!userCode) return;
     const path = 'lessons';
     try {
       await deleteDoc(doc(db, path, id));
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+      console.error('Delete failed', error);
     }
   };
 
-  return { lessons, loading, user, saveLesson, deleteLesson };
+  return { lessons, loading, user: userCode, login, logout, saveLesson, deleteLesson };
 };

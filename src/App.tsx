@@ -9,18 +9,20 @@ import { ContentManager } from './components/ContentManager';
 import { ExerciseVocab } from './components/ExerciseVocab';
 import { ExerciseListen } from './components/ExerciseListen';
 import { ExerciseComm } from './components/ExerciseComm';
-import { BookOpen, Headphones, MessageSquare, ListTodo, GraduationCap, LogIn, LogOut } from 'lucide-react';
+import { BookOpen, Headphones, MessageSquare, ListTodo, GraduationCap, LogIn, LogOut, Key, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLessons } from './hooks/useLessons';
-import { signInWithGoogle, auth as firebaseAuth } from './lib/firebase';
-import { signOut } from 'firebase/auth';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>('content');
-  const { lessons, loading, user, saveLesson, deleteLesson } = useLessons();
+  const { lessons, loading, user, login, logout, saveLesson, deleteLesson } = useLessons();
+  const [loginInput, setLoginInput] = useState('');
 
-  const handleSignOut = () => {
-    signOut(firebaseAuth);
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginInput.length === 6) {
+      login(loginInput);
+    }
   };
 
   const tabs = [
@@ -103,7 +105,7 @@ export default function App() {
           </div>
 
           <button 
-            onClick={handleSignOut}
+            onClick={logout}
             className="flex items-center gap-2 w-full px-4 py-2 text-rose-500 font-bold text-xs hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
           >
             <LogOut size={16} /> Đăng xuất
@@ -127,25 +129,18 @@ export default function App() {
           <div className="flex items-center gap-3">
              {user ? (
                <div className="flex items-center gap-3">
-                 <div className="hidden sm:flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-text-light uppercase tracking-tighter">Học viên</span>
-                    <span className="text-xs font-bold text-text-main">{user.displayName || 'Người dùng'}</span>
+                 <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-text-light uppercase tracking-tighter">ID Của bạn</span>
+                    <span className="text-sm font-bold text-primary font-mono">{user}</span>
                  </div>
-                 {user.photoURL ? (
-                    <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border-2 border-primary-light" referrerPolicy="no-referrer" />
-                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
-                      {user.displayName?.charAt(0) || 'U'}
-                    </div>
-                 )}
+                 <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">
+                   <Key size={14} />
+                 </div>
                </div>
              ) : (
-               <button 
-                 onClick={signInWithGoogle}
-                 className="btn-primary-sleek flex items-center gap-2 py-2 px-4 shadow-sm"
-               >
-                 <LogIn size={16} /> Đăng nhập Google
-               </button>
+               <div className="flex items-center gap-2 text-xs font-bold text-text-light">
+                 <LogIn size={14} /> Chưa đăng nhập
+               </div>
              )}
           </div>
         </header>
@@ -192,20 +187,40 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center space-y-6 text-center max-w-sm mx-auto">
+            <div className="h-full flex flex-col items-center justify-center space-y-8 text-center max-w-sm mx-auto">
               <div className="w-20 h-20 bg-primary-light/30 rounded-3xl flex items-center justify-center text-primary">
                 <GraduationCap size={40} />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold text-text-main">Chào mừng bạn đến với DeutschMaster</h3>
-                <p className="text-sm text-text-muted">Đăng nhập để lưu và quản lý các bài học tiếng Đức của bạn một cách an toàn.</p>
+                <h3 className="text-xl font-bold text-text-main">DeutschMaster</h3>
+                <p className="text-sm text-text-muted">Nhập mã ID 6 chữ số của bạn để truy cập và quản lý bài học.</p>
               </div>
-              <button 
-                onClick={signInWithGoogle}
-                className="btn-primary-sleek w-full flex items-center justify-center gap-3 py-3 text-sm shadow-md"
-              >
-                <LogIn size={18} /> Đăng nhập bằng Google
-              </button>
+              
+              <form onSubmit={handleLogin} className="w-full space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Mã ID 6 chữ số"
+                    className="w-full bg-white border-2 border-border-base rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.5em] focus:border-primary focus:ring-0 outline-none transition-all placeholder:text-sm placeholder:tracking-normal placeholder:font-sans"
+                  />
+                  {loginInput.length === 6 && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      type="submit"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg"
+                    >
+                      <ArrowRight size={20} />
+                    </motion.button>
+                  )}
+                </div>
+                <p className="text-[10px] text-text-light italic">
+                  Nếu bạn chưa có mã, hãy nhập bất kỳ 6 chữ số nào để bắt đầu hành trình mới!
+                </p>
+              </form>
             </div>
           )}
         </main>

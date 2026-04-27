@@ -7,20 +7,12 @@ service cloud.firestore {
     }
 
     // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
     function incoming() {
       return request.resource.data;
+    }
+
+    function isValidUserCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[0-9]+$');
     }
 
     function isValidVocabulary(vocab) {
@@ -35,28 +27,27 @@ service cloud.firestore {
     }
 
     function isValidLesson(data) {
-      return data.userId == request.auth.uid &&
+      return isValidUserCode(data.userId) &&
              data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
              data.vocabulary is list && data.vocabulary.size() <= 200 &&
              data.grammar is list && data.grammar.size() <= 100;
     }
 
     match /lessons/{lessonId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow read/write if the userId is a valid 6-digit code
+      // Security is minimal but matches the user's specific request for ID-only login
+      allow list: if isValidUserCode(resource.data.userId);
+      allow get: if isValidUserCode(resource.data.userId);
       
-      allow create: if isSignedIn() && 
-                    isValidLesson(incoming()) &&
+      allow create: if isValidLesson(incoming()) &&
                     incoming().createdAt == request.time;
       
-      allow update: if isSignedIn() && 
-                    isOwner(resource.data.userId) &&
-                    isValidLesson(incoming()) &&
+      allow update: if isValidLesson(incoming()) &&
                     incoming().userId == resource.data.userId &&
                     incoming().createdAt == resource.data.createdAt &&
                     incoming().updatedAt == request.time;
       
-      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+      allow delete: if isValidUserCode(resource.data.userId);
     }
   }
 }
