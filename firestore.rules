@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidVocabulary(vocab) {
+      return vocab.german is string && vocab.german.size() > 0 && vocab.german.size() <= 1000 &&
+             vocab.vietnamese is string && vocab.vietnamese.size() > 0 && vocab.vietnamese.size() <= 1000;
+    }
+
+    function isValidGrammar(grammar) {
+      return grammar.title is string && grammar.title.size() > 0 && grammar.title.size() <= 500 &&
+             grammar.explanation is string && grammar.explanation.size() <= 5000 &&
+             grammar.examples is list && grammar.examples.size() <= 50;
+    }
+
+    function isValidLesson(data) {
+      return data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.vocabulary is list && data.vocabulary.size() <= 200 &&
+             data.grammar is list && data.grammar.size() <= 100;
+    }
+
+    match /lessons/{lessonId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow create: if isSignedIn() && 
+                    isValidLesson(incoming()) &&
+                    incoming().createdAt == request.time;
+      
+      allow update: if isSignedIn() && 
+                    isOwner(resource.data.userId) &&
+                    isValidLesson(incoming()) &&
+                    incoming().userId == resource.data.userId &&
+                    incoming().createdAt == resource.data.createdAt &&
+                    incoming().updatedAt == request.time;
+      
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+    }
+  }
+}

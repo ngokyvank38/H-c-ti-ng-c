@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "Vocabulary": {
+      "title": "Vocabulary",
+      "description": "A vocabulary word and its translation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "german": { "type": "string" },
+        "vietnamese": { "type": "string" },
+        "context": { "type": "string" }
+      },
+      "required": ["german", "vietnamese"]
+    },
+    "GrammarPoint": {
+      "title": "Grammar Point",
+      "description": "A grammar rule or structure",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "explanation": { "type": "string" },
+        "examples": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["title"]
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "A complete lesson content",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "vocabulary": {
+          "type": "array",
+          "items": { "$ref": "Vocabulary" }
+        },
+        "grammar": {
+          "type": "array",
+          "items": { "$ref": "GrammarPoint" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title"]
+    }
+  },
+  "firestore": {
+    "/lessons/{lessonId}": {
+      "schema": "Lesson",
+      "description": "Collection of lessons managed by users"
+    }
+  }
+}

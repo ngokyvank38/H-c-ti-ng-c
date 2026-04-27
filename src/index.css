@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Helvetica Neue", Arial, sans-serif;
+  --color-primary: #2563eb;
+  --color-primary-light: #eff6ff;
+  --color-bg-base: #f1f5f9;
+  --color-border-base: #e2e8f0;
+  --color-text-main: #1e293b;
+  --color-text-muted: #64748b;
+  --color-text-light: #94a3b8;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-base text-text-main;
+  }
+}
+
+/* Custom Sleek Components equivalents */
+@utility card-sleek {
+  @apply bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.1)] border border-border-base p-5;
+}
+
+@utility btn-primary-sleek {
+  @apply bg-primary text-white px-5 py-2.5 rounded-lg font-semibold cursor-pointer transition-all hover:bg-blue-700 active:scale-[0.98];
+}
+
+@utility nav-item-sleek {
+  @apply flex items-center gap-3 p-3 rounded-lg text-text-muted font-medium transition-all;
+}
+
+@utility nav-item-active {
+  @apply bg-primary-light text-primary;
+}
+
+/* Hide scrollbar for mobile nav */
+@utility no-scrollbar {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
