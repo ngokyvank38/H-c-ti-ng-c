@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { LessonContent } from '../types';
-import { generateVocabExercise } from '../services/geminiService';
-import { Loader2, CheckCircle2, XCircle, ChevronRight, RefreshCcw } from 'lucide-react';
+import { generateVocabExercise, generateSpeech } from '../services/geminiService';
+import { Loader2, CheckCircle2, XCircle, ChevronRight, RefreshCcw, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { playBase64Audio, stopAudio } from '../lib/audio';
 
 interface ExerciseVocabProps {
   content: LessonContent[];
@@ -46,7 +47,18 @@ export const ExerciseVocab: React.FC<ExerciseVocabProps> = ({ content }) => {
 
   useEffect(() => {
     loadExercises();
+    return () => stopAudio();
   }, []);
+
+  const speak = async (text: string) => {
+    stopAudio();
+    try {
+      const audioData = await generateSpeech(text);
+      await playBase64Audio(audioData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleAnswer = (option: string) => {
     if (isRevealed) return;
@@ -129,7 +141,13 @@ export const ExerciseVocab: React.FC<ExerciseVocabProps> = ({ content }) => {
         className="card-sleek p-8 space-y-8"
       >
         <div className="space-y-4 text-center">
-          <div className="bg-bg-base p-8 rounded-xl border border-border-base">
+          <div className="bg-bg-base p-8 rounded-xl border border-border-base relative group">
+            <button
+              onClick={() => speak(currentQuestion.sentence)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white shadow-sm border border-border-base text-text-light hover:text-primary transition-all opacity-0 group-hover:opacity-100"
+            >
+              <Volume2 size={18} />
+            </button>
             <p className="text-2xl font-bold leading-relaxed text-text-main whitespace-pre-wrap">
               {currentQuestion.sentence}
             </p>

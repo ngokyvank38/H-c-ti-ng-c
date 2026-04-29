@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { LessonContent } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { translateWord } from '../services/geminiService';
-import { Loader2 } from 'lucide-react';
+import { translateWord, generateSpeech } from '../services/geminiService';
+import { Loader2, Volume2 } from 'lucide-react';
+import { playBase64Audio, stopAudio } from '../lib/audio';
 
 interface InteractiveTextProps {
   text: string;
@@ -53,6 +54,16 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
     }
   };
 
+  const speak = async (text: string) => {
+    stopAudio();
+    try {
+      const audioData = await generateSpeech(text);
+      await playBase64Audio(audioData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const paragraphs = text.split('\n');
 
   return (
@@ -90,10 +101,18 @@ export const InteractiveText: React.FC<InteractiveTextProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start mb-1">
-              <span className="font-bold text-primary-light">
-                {activeWord.word}
-                {activeWord.isAI && <span className="ml-2 text-[8px] opacity-50 uppercase tracking-tighter">(AI)</span>}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-primary-light">
+                  {activeWord.word}
+                  {activeWord.isAI && <span className="ml-2 text-[8px] opacity-50 uppercase tracking-tighter">(AI)</span>}
+                </span>
+                <button
+                  onClick={() => speak(activeWord.word)}
+                  className="text-white/30 hover:text-primary-light transition-colors"
+                >
+                  <Volume2 size={12} />
+                </button>
+              </div>
               <button 
                 onClick={() => setActiveWord(null)}
                 className="ml-2 text-white/50 hover:text-white"

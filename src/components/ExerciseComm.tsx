@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { LessonContent, ExerciseResult } from '../types';
-import { generateCommunicationExercise, evaluateResponse } from '../services/geminiService';
+import { generateCommunicationExercise, evaluateResponse, generateSpeech } from '../services/geminiService';
 import { Loader2, Send, MessageCircle, HelpCircle, CheckCircle, AlertCircle, RefreshCcw, ArrowRight, Volume2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { InteractiveText } from './InteractiveText';
+import { playBase64Audio, stopAudio } from '../lib/audio';
 
 interface ExerciseCommProps {
   content: LessonContent[];
@@ -38,7 +39,7 @@ export const ExerciseComm: React.FC<ExerciseCommProps> = ({ content }) => {
     setShowHint(false);
     setShowTranslation(false);
     setActiveWord(null);
-    window.speechSynthesis.cancel();
+    stopAudio();
     try {
       const res = await generateCommunicationExercise(content);
       setScenario(res);
@@ -51,17 +52,20 @@ export const ExerciseComm: React.FC<ExerciseCommProps> = ({ content }) => {
 
   useEffect(() => {
     loadScenario();
-    return () => window.speechSynthesis.cancel();
+    return () => stopAudio();
   }, []);
 
-  const speak = (text: string) => {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.9;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
+  const speak = async (text: string) => {
+    stopAudio();
+    try {
+      setIsSpeaking(true);
+      const audioData = await generateSpeech(text);
+      await playBase64Audio(audioData);
+    } catch (error) {
+      console.error("Speech error:", error);
+    } finally {
+      setIsSpeaking(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

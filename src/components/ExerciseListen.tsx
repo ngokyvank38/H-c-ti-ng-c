@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LessonContent, Dialogue } from '../types';
-import { generateDailyDialogue } from '../services/geminiService';
+import { generateDailyDialogue, generateSpeech } from '../services/geminiService';
 import { Loader2, Play, Pause, Volume2, Globe, Eye, EyeOff, RefreshCcw, Square } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { InteractiveText } from './InteractiveText';
+import { playBase64Audio, stopAudio } from '../lib/audio';
 
 interface ExerciseListenProps {
   content: LessonContent[];
@@ -25,7 +26,7 @@ export const ExerciseListen: React.FC<ExerciseListenProps> = ({ content }) => {
     setCurrentLineIndex(null);
     setIsAutoPlaying(false);
     autoPlayRef.current = false;
-    window.speechSynthesis.cancel();
+    stopAudio();
     try {
       const result = await generateDailyDialogue(content);
       setDialogue(result);
@@ -39,30 +40,26 @@ export const ExerciseListen: React.FC<ExerciseListenProps> = ({ content }) => {
   useEffect(() => {
     loadDialogue();
     return () => {
-      window.speechSynthesis.cancel();
+      stopAudio();
     };
   }, []);
 
-  const speak = (text: string, index: number) => {
+  const speak = async (text: string, index: number) => {
     setIsAutoPlaying(false);
     autoPlayRef.current = false;
-    window.speechSynthesis.cancel();
+    stopAudio();
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.8;
-    
-    utterance.onstart = () => {
+    try {
       setIsPlaying(true);
       setCurrentLineIndex(index);
-    };
-    
-    utterance.onend = () => {
+      const audioData = await generateSpeech(text);
+      await playBase64Audio(audioData);
+    } catch (error) {
+      console.error("Speech error:", error);
+    } finally {
       setIsPlaying(false);
       setCurrentLineIndex(null);
-    };
-
-    window.speechSynthesis.speak(utterance);
+    }
   };
 
   const playAll = () => {
@@ -75,12 +72,12 @@ export const ExerciseListen: React.FC<ExerciseListenProps> = ({ content }) => {
   const stopAll = () => {
     setIsAutoPlaying(false);
     autoPlayRef.current = false;
-    window.speechSynthesis.cancel();
+    stopAudio();
     setCurrentLineIndex(null);
     setIsPlaying(false);
   };
 
-  const playLineSequentially = (index: number) => {
+  const playLineSequentially = async (index: number) => {
     if (!dialogue || index >= dialogue.lines.length || !autoPlayRef.current) {
       setIsAutoPlaying(false);
       autoPlayRef.current = false;
@@ -89,16 +86,12 @@ export const ExerciseListen: React.FC<ExerciseListenProps> = ({ content }) => {
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(dialogue.lines[index].text);
-    utterance.lang = 'de-DE';
-    utterance.rate = 0.8;
-
-    utterance.onstart = () => {
+    try {
       setIsPlaying(true);
       setCurrentLineIndex(index);
-    };
-
-    utterance.onend = () => {
+      const audioData = await generateSpeech(dialogue.lines[index].text);
+      await playBase64Audio(audioData);
+      
       if (autoPlayRef.current) {
         setTimeout(() => {
           if (autoPlayRef.current) {
@@ -106,9 +99,10 @@ export const ExerciseListen: React.FC<ExerciseListenProps> = ({ content }) => {
           }
         }, 600);
       }
-    };
-    
-    window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error("Sequential speech error:", error);
+      stopAll();
+    }
   };
 
   if (content.length === 0) {
